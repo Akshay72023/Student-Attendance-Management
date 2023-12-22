@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Attendance Tracker</title>
+    <link rel="stylesheet" href="../public/style.css">
+</head>
+
+<body>
+    <div class="container">
+        <h1>Attendance Tracker</h1>
+
+        <div class="input-group">
+            <label for="date">Select Date:</label>
+            <input type="date" id="date">
+            <button id="search">Search</button>
+        </div>
+
+        <ul id="attendance-list">
+            <!-- This will be having student names and radio buttons -->
+        </ul>
+
+        <div class="button-container">
+            <button id="report">Fetch Attendance Report</button>
+        </div>
+
+        <ul class="report" id="studentAttendanceList">
+            <!-- This will display attendance report -->
+        </ul>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.5.1/axios.min.js"></script>
+    <script>
+
+document.getElementById("search").addEventListener("click", async function() {
+    try {
+        const date1 = document.getElementById("date").value;
+        const response = await axios.get(`http://localhost:5000/get-attendance/${date1}`);
+        const data = response.data;
+        const attendanceList = document.getElementById("attendance-list");
+        attendanceList.innerHTML = '';
+        if (data.length > 0) {
+            data.forEach(student => {
+                attendanceList.innerHTML += `
+                    <li>${student.name} - <span class="tick" style="color: ${student.status === 'present' ? 'green' : 'red'};">${student.status.charAt(0).toUpperCase() + student.status.slice(1)}</span></li>
+                `;
+            });
+        } else {
+            displaySelection();
+        }
+    } catch (error) {
+        console.error(error);
+    }
+});
+
+function displaySelection() {
+    const studentNames = ["Student A", "Student B", "Student C", "Student D", "Student E", "Student F"];
+    const attendanceList = document.getElementById("attendance-list");
+    attendanceList.innerHTML = '';
+    const markbtn = `<button id="mark-attendance">Mark Attendance</button>`;
+    studentNames.forEach(name => {
+        attendanceList.innerHTML += `
+            <li>${name} - 
+                <label for="present-${name}">Present</label>
+                <input type="radio" id="present-${name}" name="${name}" value="present">
+                <label for="absent-${name}">Absent</label>
+                <input type="radio" id="absent-${name}" name="${name}" value="absent">
+            </li>
+        `;
+    });
+    attendanceList.innerHTML += markbtn;
+    document.getElementById("mark-attendance").addEventListener("click", markAttendance);
+}
+
+async function markAttendance() {
+    try {
+        const date1 = document.getElementById("date").value;
+        const studentList = document.querySelectorAll("#attendance-list li");
+        const list = document.getElementById('attendance-list');
+        list.innerHTML = '';
+
+        for (const student of studentList) {
+            const name = student.textContent.split("-")[0];
+            const presentRadio = student.querySelector("input[value='present']");
+            const absentRadio = student.querySelector("input[value='absent']");
+
+            let status;
+            if (presentRadio.checked) {
+                status = 'present';
+            } else if (absentRadio.checked) {
+                status = 'absent';
+            } else {
+                continue;
+            }
+
+            const obj = {
+                date1,
+                name,
+                status
+            };
+
+            const response = await axios.post('http://localhost:5000/mark-attendance', obj);
+            const data = response.data;
+            list.innerHTML += `
+                <li>${data.name} - <span class="tick" style="color: ${data.status === 'present' ? 'green' : 'red'};">${data.status.charAt(0).toUpperCase() + data.status.slice(1)}</span></li>
+            `;
+        }
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+document.getElementById("report").addEventListener("click", async function() {
+    try {
+        const response = await axios.get('http://localhost:5000/get-report');
+        const data = response.data;
+        const attendanceList = document.getElementById("studentAttendanceList");
+        attendanceList.innerHTML = '';
+
+        if (data.length > 0) {
+            data.forEach(student => {
+                attendanceList.innerHTML += `
+                    <li>${student.name} - ${parseInt(student.present_count)}/${parseInt(student.absent_count) + parseInt(student.present_count)} - ${Math.floor((parseInt(student.present_count) / (parseInt(student.absent_count) + parseInt(student.present_count))) * 100)}%</li>
+                `;
+            });
+        } else {
+            console.log('No attendance data available.');
+        }
+    } catch (error) {
+        console.error(error);
+    }
+});
+
+    </script>
+</body>
+
+</html>
